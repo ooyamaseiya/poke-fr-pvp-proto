@@ -1,0 +1,196 @@
+.battle-screen {
+  width: 100%;
+  max-width: 420px;
+  height: 750px; /* Fixed height to fit screen */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background-color: #F8F8F8;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Courier New', Courier, monospace;
+  border: 4px solid #333;
+}
+
+/* --- Header (Turn & Score) --- */
+.battle-header {
+  height: 50px;
+  background: #fff;
+  border-bottom: 2px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+  font-weight: bold;
+}
+
+.retro-frame {
+  border: 2px double #333;
+  padding: 2px 8px;
+  background: white;
+}
+
+/* --- Battle Field (Top & Bottom) --- */
+.battlefield {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 20px 10px;
+  position: relative;
+}
+
+.pokemon-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 35%;
+  width: 100%;
+}
+
+.pokemon-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transition: transform 0.2s ease-in-out;
+}
+
+.pokemon-img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.hp-bar-container {
+  width: 70%;
+  height: 12px;
+  border: 2px solid #333;
+  background: white;
+  margin-top: 4px;
+  position: relative;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  transition: width 0.5s ease, background-color 0.3s;
+}
+
+.hp-text {
+  font-size: 12px;
+  position: absolute;
+  top: -16px;
+  right: -20px;
+  width: 40px;
+  text-align: right;
+}
+
+/* --- Animations --- */
+.shake {
+  animation: shakeAnim 0.5s infinite;
+}
+
+@keyframes shakeAnim {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    20% { transform: translate(-3px, -2px) rotate(-1deg); }
+    40% { transform: translate(-1px, 0px) rotate(1deg); }
+    60% { transform: translate-3px, 1px) rotate(0deg); }
+    80% { transform: translate(2px, -1px) rotate(1deg); }
+    100% { transform: translate(1px, -1px) rotate(-1deg); }
+}
+
+.flash {
+  animation: flashAnim 0.3s infinite;
+}
+
+@keyframes flashAnim {
+    0%, 100% { opacity: 1; filter: brightness(1); }
+    50% { opacity: 0.5; filter: brightness(2); }
+}
+
+/* Slash Effect Overlay */
+.slash-effect {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  background-image: url('/effects/slash_sheet.png'); /* In Vite, assets in public are at root */
+  background-size: cover; /* Adjust based on actual sheet size and frames */
+  display: none;
+}
+
+/* Slash Animation (5 steps for 5 frames) */
+.animate-slash {
+    display: block !important;
+    animation: slashAnim 0.6s steps(5) forwards;
+}
+
+@keyframes slashAnim {
+    from { background-position: 0% 0%; }
+    to { background-position: -100% 0%; } /* This depends on how the sheet is laid out */
+}
+
+/* --- Message Window --- */
+.message-window {
+  height: 120px;
+  background-color: #333;
+  border: 4px solid black;
+  border-radius: 8px;
+  margin: 5px;
+  padding: 10px;
+  color: white;
+  font-size: 16px;
+  position: relative;
+}
+
+.message-text {
+    line-height: 1.4;
+}
+
+/* --- Command Panel (Buttons) --- */
+.command-panel {
+  height: 200px;
+  padding: 10px;
+  background: #eee;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cmd-btn {
+    border: 3px solid #555;
+    background: white;
+    cursor: pointer;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+}
+
+.cmd-btn:active { background: #ddd; }
+.cmd-btn:disabled { opacity: 0.5; cursor: not-allowed; grayscale: 1; }
+
+.pokemon-name { font-weight: bold; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; width: 100%; white-space: nowrap; }
+.spd-badge { color: #ff9800; font-size: 16px; }
+.sleep-icon { font-size: 24px; }
+
+/* --- Overlay (Handover/Result) --- */
+.overlay {
+    position: absolute;
+    top:0; left:0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+/* Mobile Responsive (as requested) */
+@media (max-width: 420px) {
+  .battle-screen { width: 100%; height: 100vh; }
+}
