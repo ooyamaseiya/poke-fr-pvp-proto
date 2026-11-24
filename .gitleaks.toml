@@ -1,0 +1,19 @@
+title = "Project Gitleaks Config"
+
+[extend]
+# gitleaks 標準のビルトインルールセット（各種APIキー・トークン・秘密鍵等）をすべて継承
+useDefault = true
+
+[allowlist]
+description = "テンプレートおよびサンプル設定ファイルの除外"
+paths = [
+  '''^\.gitleaks\.toml$''',
+  '''^\.devcontainer/\.env\.example$''',
+  '''^\.env\.example$''',
+  '''^opencode\.json$''',
+]
+
+# プロジェクト固有のダミー値やテスト用文字列を除外したい場合は以下のように追記してください
+# regexes = [
+#   '''EXAMPLE_DUMMY_TOKEN_[A-Z0-9]+''',
+# ]

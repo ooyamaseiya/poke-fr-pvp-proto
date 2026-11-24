@@ -1,0 +1,36 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: dockerfiles/${DOCKERFILE_NAME:?Dockerfile name must be set}
+      args:
+        # BASE_IMAGE は各Dockerfile固有の前提条件となるため削除
+        PLAYWRIGHT_VERSION: ${PLAYWRIGHT_VERSION:-1.52.0}
+        NODE_MAJOR_VERSION: ${NODE_MAJOR_VERSION:-22}
+        PYTORCH_INDEX_URL: ${PYTORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
+        PIO_LIBRARIES: ${PIO_LIBRARIES:-m5stack/M5Unified}
+        GITLEAKS_VERSION: ${GITLEAKS_VERSION:-8.30.0}
+    volumes:
+      - ..:/workspaces/${PROJECT_NAME:?PROJECT_NAME must be set}:cached
+      # node_modules をコンテナ専用ボリュームにしてI/Oとリビルド時の再DLを高速化
+      - node_modules:/workspaces/${PROJECT_NAME}/node_modules
+      - ${HOST_CA_CERT_PATH:-/etc/caddy/certs/ca.crt}:/usr/local/share/ca-certificates/caddy-ca.crt:ro
+    environment:
+      NODE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+      SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      DISPLAY: :99
+      XDG_RUNTIME_DIR: /tmp/runtime-${CONTAINER_USER:-root}
+    ports:
+      - "${APP_PORT:-5173}:${APP_PORT:-5173}"
+      - "${NOVNC_PORT:-6080}:${NOVNC_PORT:-6080}"
+    devices:
+      # シリアルデバイスをホストからコンテナへパススルー（不要な場合は /dev/null 等で回避）
+      - "${SERIAL_DEVICE:-/dev/null}:${SERIAL_DEVICE:-/dev/null}"
+    user: "${CONTAINER_USER:-root}"
+    command: sleep infinity
+    extra_hosts:
+      - "${INFER_HOST:-dev-infer.local}:${DEV_INFER_IP:?DEV_INFER_IP must be set}"
+
+volumes:
+  node_modules:

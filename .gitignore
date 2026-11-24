@@ -1,0 +1,23 @@
+.pio
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch
+
+data/processed/
+data/processed_realistic/
+*.pth
+*.zip
+webapp/dist/
+
+generated.xml
+
+# シークレット・環境変数・秘密鍵ファイル（gitleaks との多層防御）
+.env
+.env.*
+!.env.example
+.devcontainer/.env
+*.pem
+*.key
+*.p12
+*.pfx

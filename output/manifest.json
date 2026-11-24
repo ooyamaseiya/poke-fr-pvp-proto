@@ -1,0 +1,21 @@
+{
+  "sprite_size": 72,
+  "pokemons": [
+    {
+      "id": "0383",
+      "name": "グラードン",
+      "sprites": {
+        "back": "./assets/0383_グラードン_back.png",
+        "front": "./assets/0383_グラードン_front.png"
+      }
+    },
+    {
+      "id": "0483",
+      "name": "ディアルガ",
+      "sprites": {
+        "back": "./assets/0483_ディアルガ_back.png",
+        "front": "./assets/0483_ディアルガ_front.png"
+      }
+    }
+  ]
+}

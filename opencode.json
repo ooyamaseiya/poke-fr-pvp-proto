@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "local-server": {
+      "name": "Dev Inference Server",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "https://dev-infer.local/v1"
+      },
+      "models": {
+        "Qwen3.8-27B-GGUF-UD-IQ4_XS": {
+          "name": "Qwen3.8 27B",
+          "limit": {
+            "context": 81264,
+            "output": 8192
+          }
+        },
+        "Kwaipilot_KAT-Coder-V2.5-Dev-GGUF-IQ4_XS": {
+          "name": "KAT-Coder-V2.5-Dev",
+          "limit": {
+            "context": 102400,
+            "output": 8192
+          }
+        },
+        "gpt-oss-20b-mxfp4-GGUF": {
+          "name": "GPT OSS 20B",
+          "reasoning": true,
+          "limit": {
+            "context": 122880,
+            "output": 16384
+          }
+        },
+        "gemma-4-26B-A4B-it-qat-q4_0-gguf-Q4_0": {
+          "name": "Gemma4 26B A4B",
+          "reasoning": true,
+          "limit": {
+            "context": 102400
+          }
+        }
+      }
+    }
+  }
+}

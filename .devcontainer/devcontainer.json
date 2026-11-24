@@ -1,0 +1,46 @@
+{
+  // プロジェクトのディレクトリ名を自動でコンテナ名に反映
+  "name": "${localWorkspaceFolderBasename} Dev Container",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  // ホスト側のフォルダ名と自動一致させる
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+  // ホスト側で実行：.devcontainer/.env を自動生成して docker-compose.yml に渡す
+  "initializeCommand": "bash .devcontainer/initialize.sh",
+
+  // --- プロジェクトの技術スタックに合わせて調整する箇所 ---
+  "forwardPorts": [], // 必要に応じて許可する
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // --- Frontend / Vite.js ---
+        "Vue.volar", // Vue 3 公式サポート（React等の場合は不要）
+        "dbaeumer.vscode-eslint", // JS/TS 静的解析
+        "esbenp.prettier-vscode", // コードフォーマット
+        "bradlc.vscode-tailwindcss", // Tailwind CSS を使う場合
+
+        // --- Python ---
+        "ms-python.python", // Python 実行・仮想環境(.venv)の自動認識
+        "ms-python.vscode-pylance", // 高速な型補完・定義ジャンプ
+        "charliermarsh.ruff", // Rust製の超高速 Linter / Formatter
+
+        // --- Embedded / C++ ---
+        "platformio.platformio-ide" // PlatformIO本体（C/C++拡張も自動で入る）
+      ],
+      "settings": {
+        "platformio-ide.useBuiltinPIOCore": true,
+        "platformio-ide.customPATH": "/usr/local/bin",
+        "platformio-ide.pioHomeServerHttpHost": "127.0.0.1",
+        "platformio-ide.autoOpenPlatformIOHome": false
+      }
+    }
+  },
+  // ----------------------------------------------------
+
+  // 実行ユーザーは docker-compose.yml 側の `user:` に委譲するためコメントアウトまたは削除
+  "remoteUser": "root",
+
+  // コンテナ作成後に実行：証明書反映と依存パッケージのセットアップ
+  "postCreateCommand": "bash .devcontainer/post-create.sh"
+}

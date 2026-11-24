@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# gitleaks が利用可能か確認
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "[gitleaks] エラー: gitleaks コマンドが見つかりません。" >&2
+  echo "[gitleaks] Dev Container 内でコミットするか、ホスト側にも gitleaks をインストールしてください。" >&2
+  echo "[gitleaks] 緊急時にチェックをスキップする場合: git commit --no-verify" >&2
+  exit 1
+fi
+
+echo "[gitleaks] ステージングされた変更のシークレット混入チェックを実行中..."
+gitleaks git --pre-commit --staged --redact --verbose
