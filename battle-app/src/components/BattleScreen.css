@@ -1,177 +1,267 @@
-/* battle-app/src/components/BattleScreen.css */
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
 
 .battle-container {
+  font-family: 'DotGothic16', system-ui, sans-serif;
+  width: 100%;
   max-width: 420px;
-  height: 100vh;
+  height: 100dvh;
   margin: 0 auto;
+  background-color: #F8F8F8;
   display: flex;
   flex-direction: column;
-  background-color: #fdfdff;
-  position: relative;
   overflow: hidden;
-  font-family: 'Courier New', Courier, monospace;
+  position: relative;
+  box-sizing: border-box;
+  border: 2px solid #181818; /* Container outline for desktop view */
 }
 
+/* ① Header Bar */
 .battle-header {
   height: 40px;
+  background-color: #F8F8F8;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 15px;
-  background: #eee;
-  border-bottom: 2px solid #333;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 2px solid #181818;
+  font-size: 14px;
+  color: #181818;
+}
+
+.turn-info {
+  flex: 1;
+}
+
+.score-area {
+  padding: 0 8px;
+  background: white;
+  border: 2px solid #181818;
+  height: 30px;
+  display: flex;
+  align-items: center;
   font-size: 14px;
 }
 
-.battlefield {
-  flex: 1;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  padding: 10px;
-  background: #f8f8f8;
+.back-btn {
+  padding: 2px 6px;
+  font-family: inherit;
+  background: white;
+  border: 2px solid #181818;
+  cursor: pointer;
+  font-size: 10px;
 }
 
-.team-row {
-  height: 35%;
+/* ② Battle Field */
+.battle-field {
+  flex: 1;
   display: flex;
-  justify-content: space-around;
-  align-items: center;
+  flex-direction: column;
   position: relative;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.grid-layout {
+  display: grid;
+  gap: 4px;
+}
+
+/* P2 (Top) Area */
+.enemy-area {
+  grid-template-columns: repeat(3, 1fr);
+  height: 50%;
+}
+
+/* P1 (Bottom) Area */
+.player-area {
+  grid-template-columns: repeat(3, 1fr);
+  height: 45%; /* Slightly less for more space in middle or message */
+  align-items: flex-end;
 }
 
 .pokemon-card {
-  text-align: center;
-  width: 80px;
-  transition: transform 0.2s, opacity 0.3s;
-  position: relative;
-}
-
-.pokemon-img {
-  width: 64px;
-  height: 64px;
-  image-rendering: pixelated;
-  background: #eee;
-  display: block;
-  margin: 0 auto;
-}
-
-.hp-bar-container {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  height: 8px;
-  background: #ddd;
-  border: 1px solid #333;
-  margin-top: 4px;
+}
+
+/* P2 Cards (Status -> Image) */
+.enemy-card .status-bar-mini {
+  background: white;
+  border: 3px solid #181818;
+  padding: 4px 2px;
+  margin-bottom: 2px;
+}
+
+.enemy-card .name {
+  font-size: 10px;
+  display: block;
+  text-align: center;
+}
+
+.hp-container {
+  position: relative;
+  height: 6px;
+  background: #eee;
+  border: 1px solid #181818;
+  margin: 2px auto;
+  width: 90%;
 }
 
 .hp-fill {
   height: 100%;
-  transition: width 0.5s ease-in-out, background-color 0.3s;
+  background-color: #30B830; /* Green */
+  transition: width 0.3s ease;
 }
 
-.pokemon-info {
-  font-size: 12px;
-  margin-top: 4px;
-  font-weight: bold;
+.enemy-card .sprite-front {
+  width: 100%;
+  aspect-ratio: 1/1;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
 
-.message-window {
-  height: 70px;
-  background: black;
-  color: white;
-  border: 4px double #fff;
-  padding: 8px;
-  margin: 5px 10px;
-  font-size: 16px;
+/* P2 Sprite Container to keep it consistent */
+.enemy-card img {
+    max-height: 70px;
+    width: auto;
+    display: block;
+    margin: 0 auto;
 }
 
-.command-panel {
-  height: 30%;
-  background: #ddd;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 10px;
-  gap: 8px;
-  border-top: 2px solid #333;
+/* P1 Cards (Image -> Status) */
+.player-card .sprite-back {
+  width: 100%;
+  aspect-ratio: 1/1;
+  object-fit: contain;
+  image-rendering: pixelated;
+  max-height: 85px;
 }
 
-.action-btn {
-  flex: 1;
-  max-width: 140px;
-  height: 50px;
-  font-family: inherit;
-  cursor: pointer;
-  border: 2px solid #333;
+.player-card img {
+    width: auto !important;
+    height: auto !important;
+    display: block;
+    margin: 0 auto;
+}
+
+.player-card .status-bar-mini {
   background: white;
+  border: 3px solid #181818;
+  padding: 4px 2px;
+  width: 95%;
+  align-self: center;
 }
 
-.action-btn:hover {
-  background: #f0f0f0;
+.player-card .name {
+    font-size: 10px;
+    display: block;
+    text-align: left; /* Name usually on the left/center */
 }
 
-@keyframes slash_anim {
-  from { transform: translateX(-150%) scaleY(2) rotate(-5deg); opacity: 0; }
-  to { transform: translateX(150%) scaleY(1) rotate(5deg); opacity: 1; }
+.hp-container {
+  height: 6px;
 }
 
-.slash-effect {
-  position: absolute;
-  height: 4px;
-  width: 200%;
-  background: white;
-  box-shadow: 0 0 8px orange, 0 0 15px red;
-  z-index: 100;
-  pointer-events: none;
-  animation: slash_anim 0.4s ease-in forwards;
-}
-
-@keyframes shake {
-  0% { transform: translate(2px, 2px); }
-  50% { transform: translate(-2px, -2px); }
-  100% { transform: translate(0, 0); }
-}
-
-.shake-anim {
-  animation: shake 0.1s infinite;
-}
-
-.handover-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.95);
-  color: white;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.fainted {
-  opacity: 0.4;
-  filter: grayscale(1);
-}
-
-.zzz-label {
+.hp-text {
     position: absolute;
-    top: -5px;
-    right: -5px;
-    font-size: 12px;
-    background: yellow;
-    padding: 0 2px;
-    border: 1px solid black;
+    right: 2px;
+    top: -10px;
+    font-size: 8px;
+    color: #181818;
 }
 
-.result-screen {
-  position: absolute;
-  inset: 0;
-  background: rgba(255,255,255,0.9);
+.text-small {
+    font-size: 7px !important;
+}
+
+/* Middle Space */
+.battle-middle {
+  height: 20px;
+}
+
+/* ③ Message Window (Double Border) */
+.message-window {
+  padding: 4px;
+  background-color: white; /* Should be inside the double border container */
+  min-height: 75px;
+  display: flex;
+  align-items: center;
+}
+
+.double-border-container {
+    width: 100%;
+    height: 100%;
+    border: 4px solid #181818;
+    position: relative;
+}
+
+/* Retro double border effect */
+.double-border-container::before {
+    content: '';
+    position: absolute;
+    top: -6px; left: -6px; right: -6px; bottom: -6px;
+    border: 1px solid #181818;
+}
+
+.message-text {
+  padding: 8px 12px;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #181818;
+}
+
+/* ④ Command Panel */
+.command-panel {
+  background-color: white;
+  border-top: 4px solid #181818;
+  padding: 5px;
+  height: 130px;
+}
+
+.command-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Standard Pokémon style often has a 2x2 or list */
+    /* Instruction said "3 selection buttons ... horizontal (or vertical)": I'll use vertical for clarity if needed, but instruction says 3. Let me do 3 rows to be safe and clear as per request "P1の先発3体に対応する3つの選択ボタンを横並び（または縦3行のリスト形式）". A grid of 2 columns might look better in a narrow screen, let's try 3 vertical buttons for clarity. */
+    grid-template-rows: repeat(3, 1fr);
+    gap: 4px;
+    height: 100%;
+}
+
+/* Wait, instruction says "横並び (horizontal) OR 縦3行のリスト形式". Let's go with vertical list for better mobile usage. */
+.command-options {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cmd-btn {
+  background-color: white;
+  border: 3px solid #181818;
+  height: 100%; /* Each button takes some portion of height */
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  z-index: 2000;
+  justify-content: space-between;
+  padding: 2px 4px;
+  cursor: pointer;
 }
 
+.cmd-btn:active {
+    background-color: #ddd;
+}
+
+.cmd-name {
+  font-size: 16px;
+  text-align: center;
+}
+
+.cmd-move {
+  font-size: 12px;
+}
+
+.cmd-speed {
+    font-size: 14px;
+    color: #30B830; /* Greenish for speed */
+}
