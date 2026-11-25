@@ -159,22 +159,6 @@
     text-align: left; /* Name usually on the left/center */
 }
 
-.hp-container {
-  height: 6px;
-}
-
-.hp-text {
-    position: absolute;
-    right: 2px;
-    top: -10px;
-    font-size: 8px;
-    color: #181818;
-}
-
-.text-small {
-    font-size: 7px !important;
-}
-
 /* Middle Space */
 .battle-middle {
   height: 20px;
@@ -221,19 +205,10 @@
 }
 
 .command-options {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr); /* Standard Pokémon style often has a 2x2 or list */
-    /* Instruction said "3 selection buttons ... horizontal (or vertical)": I'll use vertical for clarity if needed, but instruction says 3. Let me do 3 rows to be safe and clear as per request "P1の先発3体に対応する3つの選択ボタンを横並び（または縦3行のリスト形式）". A grid of 2 columns might look better in a narrow screen, let's try 3 vertical buttons for clarity. */
-    grid-template-rows: repeat(3, 1fr);
-    gap: 4px;
-    height: 100%;
-}
-
-/* Wait, instruction says "横並び (horizontal) OR 縦3行のリスト形式". Let's go with vertical list for better mobile usage. */
-.command-options {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    height: 100%;
 }
 
 .cmd-btn {
@@ -264,4 +239,58 @@
 .cmd-speed {
     font-size: 14px;
     color: #30B830; /* Greenish for speed */
+}
+
+/* Step 2-2 Additions */
+
+/* Handover Overlay */
+.overlay-handover {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+  color: white;
+}
+
+.overlay-handover h2 {
+    font-size: 18px;
+    margin-bottom: 1rem;
+}
+
+.overlay-handover p {
+    font-size: 14px;
+    margin-bottom: 2rem;
+}
+
+.handover-ok {
+    background-color: #D82828 !important; /* Red accent */
+    color: white;
+    padding: 8px 16px;
+}
+
+/* Theme Accents for Command Panel */
+.theme-p1 .cmd-btn {
+  border-top: 4px solid #2860D8; /* Blue top border for P1 */
+}
+
+.theme-p2 .cmd-btn {
+  border-top: 4px solid #D82828; /* Red top border for P2 */
+}
+
+/* Highlights when selection is confirmed */
+.selected-highlight {
+    outline: 4px solid #FFD700 !important; /* Gold outline for selected pokemon in confirmation phase */
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+}
+
+/* Reset Button styling */
+.reset-btn {
+    background-color: #eee !important;
+    font-size: 14px;
 }
