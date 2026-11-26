@@ -173,6 +173,33 @@
   filter: grayscale(100%);
 }
 
+/* 疲労中（fatigueTurns > 0）の立ち絵：少し明度を落とす（Step 2-3c） */
+.battle-sprite-fatigued {
+  filter: brightness(0.85);
+}
+
+/* 立ち絵コンテナ：疲労💦マークの絶対定位の基準にする（Step 2-3c） */
+.battle-sprite-wrap {
+  position: relative;
+}
+
+/* 疲労マーク 💦：立ち絵コンテナの左上にオーバーレイ表示（Step 2-3c） */
+.battle-fatigue-badge {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 10;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: #fff;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  padding: 0 3px;
+  box-shadow: 1px 1px 0 rgba(24, 24, 24, 0.4);
+}
+
 /* コンパクトなステータス枠（名前・HPバー） */
 .battle-status {
   width: 100%;
@@ -358,6 +385,14 @@
   font-weight: bold;
   letter-spacing: 1px;
   color: #999;
+}
+
+/* 疲労中（fatigueTurns > 0）：disabled + 「💦 ひろう（あとNターン）」表示（Step 2-3c） */
+.battle-command-fatigued {
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #4a7d99;
 }
 
 .battle-command-name {

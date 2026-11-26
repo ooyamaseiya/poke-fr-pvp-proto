@@ -13,12 +13,13 @@ function normalizeTeam(team) {
 }
 
 // フィールド上の状態を初期化（Step 2-3b）
-// 各ポケモンに currentHp / isFainted を付与した可変データとする
+// 各ポケモンに currentHp / isFainted / fatigueTurns を付与した可変データとする
 function makeField(team) {
   return team.map((p) => ({
     ...p,
     currentHp: p.maxHp,
     isFainted: false,
+    fatigueTurns: 0, // 0 = 元気（選択可能）、1〜2 = 疲労状態（選択不可）
   }));
 }
 
@@ -38,6 +39,42 @@ function applyDamageToField(attacker, field) {
     const nextHp = Math.max(0, p.currentHp - dmg);
     return { ...p, currentHp: nextHp, isFainted: nextHp <= 0 };
   });
+}
+
+// 詰み防止ルール（Step 2-3c）：
+// 生存ポケモンが1体以上いるのに、生存ポケモン全員が fatigueTurns > 0 なら、
+// 生存ポケモンの中で最小の fatigueTurns (minFatigue) を全生存ポケモンに差し引き、
+// 最も回復が近いポケモンを 0（選択可能）にする。
+// 戦闘不能のポケモンは対象から除外する（除外しないと minFatigue=0 で効果がなくなる）。
+export function preventSoftlock(field) {
+  const survivors = field.filter((p) => !p.isFainted);
+  if (survivors.length === 0) return field;
+  if (!survivors.every((p) => p.fatigueTurns > 0)) return field;
+  const minFatigue = Math.min(...survivors.map((p) => p.fatigueTurns));
+  return field.map((p) =>
+    p.isFainted
+      ? p
+      : { ...p, fatigueTurns: Math.max(0, p.fatigueTurns - minFatigue) }
+  );
+}
+
+// 疲労状態の更新（Step 2-3c）：ターン終了時に呼ばれる
+// field: フィールド配列, attacked: このターンに実際に攻撃したポケモンのインデックス集合
+//   1. 攻撃していないポケモンの疲労を減らす（>0 のとき -1、下限0）
+//   2. 攻撃したポケモンに疲労を付与（fatigueTurns = 2）
+//   3. 詰み防止ルールを適用
+export function updateFatigue(field, attacked) {
+  const decremented = field.map((p, i) => {
+    const wasAttacker = attacked.has(i);
+    let fatigue = p.fatigueTurns;
+    // 1. 攻撃していないポケモンだけ減らす
+    if (!wasAttacker && fatigue > 0) fatigue = Math.max(0, fatigue - 1);
+    // 2. 攻撃したポケモンは 2 にセット
+    if (wasAttacker) fatigue = 2;
+    return { ...p, fatigueTurns: fatigue };
+  });
+  // 3. 詰み防止
+  return preventSoftlock(decremented);
 }
 
 // 待機関数（非同期フェーズの自動進行用）
@@ -116,6 +153,9 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
     // 非同期処理中に stale state の HP を読んでしまうのを防ぐため、ローカルコピーを管理
     let p1F = p1F0;
     let p2F = p2F0;
+    // このターンに実際に攻撃を実行したポケモンのインデックス（P1側 / P2側）
+    const p1Attacked = new Set();
+    const p2Attacked = new Set();
 
     // 1. SPEED_RESULT：判定メッセージを表示中（約1200ms待機）
     await wait(1200);
@@ -124,6 +164,10 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
     const firstPlayer = order.first;
     const secondPlayer = order.second;
     const firstPokemon = firstPlayer === "P1" ? p1F[p1Sel] : p2F[p2Sel];
+
+    // 先攻は必ず攻撃を実行する
+    if (firstPlayer === "P1") p1Attacked.add(p1Sel);
+    else p2Attacked.add(p2Sel);
 
     setTurnPhase(PHASE_EXEC_FIRST);
     setMessage(
@@ -153,6 +197,9 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
       setMessage(`${secondPokemon.name} は たおれて こうげきできない！`);
       await wait(1200);
     } else {
+      // 後攻は実際にかける（攻撃実行のポケモンにマークする）
+      if (secondPlayer === "P1") p1Attacked.add(p1Sel);
+      else p2Attacked.add(p2Sel);
       setMessage(
         `P${secondPlayer === "P1" ? "1" : "2"} の ${secondPokemon.name} の ${secondPokemon.moveName}！`
       );
@@ -171,6 +218,12 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
     }
 
     // 4. ターン終了・次の選択へ
+    // 疲労状態の更新（Step 2-3c）：減算 → 攻撃者に付与 → 詰み防止
+    p1F = updateFatigue(p1F, p1Attacked);
+    p2F = updateFatigue(p2F, p2Attacked);
+    setP1Field(p1F);
+    setP2Field(p2F);
+
     setP1SelectedIndex(null);
     setP2SelectedIndex(null);
     setTurnOrder(null);
@@ -270,13 +323,28 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
                   />
                 </div>
               </div>
-              <img
-                className={`pixel-img battle-sprite battle-sprite-front ${
-                  p.isFainted ? "battle-sprite-fainted" : ""
-                }`}
-                src={p.sprites.front}
-                alt={p.name}
-              />
+              {/* 疲労状態：立ち絵コンテナ（position:relative）の左上に 💦 マークをオーバーレイ表示（Step 2-3c） */}
+              <div className="battle-sprite-wrap">
+                <img
+                  className={`pixel-img battle-sprite battle-sprite-front ${
+                    p.isFainted
+                      ? "battle-sprite-fainted"
+                      : p.fatigueTurns > 0
+                      ? "battle-sprite-fatigued"
+                      : ""
+                  }`}
+                  src={p.sprites.front}
+                  alt={p.name}
+                />
+                {p.fatigueTurns > 0 && !p.isFainted && (
+                  <span
+                    className="battle-fatigue-badge"
+                    title={`疲労中（あと${p.fatigueTurns}ターン）`}
+                  >
+                    💦{p.fatigueTurns}
+                  </span>
+                )}
+              </div>
               {/* すばやさ判定結果バッジ：先攻「1st せんこう」/ 後攻「2nd こうこう」 */}
               {turnPhase === PHASE_SPEED_RESULT && i === p2SelectedIndex && (
                 <span
@@ -307,13 +375,28 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
                   : ""
               }`}
             >
-              <img
-                className={`pixel-img battle-sprite battle-sprite-back ${
-                  p.isFainted ? "battle-sprite-fainted" : ""
-                }`}
-                src={p.sprites.back}
-                alt={p.name}
-              />
+              {/* 疲労状態：立ち絵コンテナ（position:relative）の左上に 💦 マークをオーバーレイ表示（Step 2-3c） */}
+              <div className="battle-sprite-wrap">
+                <img
+                  className={`pixel-img battle-sprite battle-sprite-back ${
+                    p.isFainted
+                      ? "battle-sprite-fainted"
+                      : p.fatigueTurns > 0
+                      ? "battle-sprite-fatigued"
+                      : ""
+                  }`}
+                  src={p.sprites.back}
+                  alt={p.name}
+                />
+                {p.fatigueTurns > 0 && !p.isFainted && (
+                  <span
+                    className="battle-fatigue-badge"
+                    title={`疲労中（あと${p.fatigueTurns}ターン）`}
+                  >
+                    💦{p.fatigueTurns}
+                  </span>
+                )}
+              </div>
               <div className="battle-status">
                 <span className="battle-name">{p.name}</span>
                 <div className="hp-bar">
@@ -381,14 +464,18 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
                   <button
                     key={`${p.id}-${i}`}
                     className="battle-command"
-                    disabled={p.isFainted}
+                    disabled={p.isFainted || p.fatigueTurns > 0}
                     onClick={() => (isP1Turn ? selectP1(i) : selectP2(i))}
                     aria-label={`${p.name} を選択`}
                   >
                     <span className="battle-command-name">{p.name}</span>
-                    {p.isFainted && (
+                    {p.isFainted ? (
                       <span className="battle-command-fainted">ひんし</span>
-                    )}
+                    ) : p.fatigueTurns > 0 ? (
+                      <span className="battle-command-fatigued">
+                        💦 ひろう（あと{p.fatigueTurns}ターン）
+                      </span>
+                    ) : null}
                     <span className="battle-command-move">{p.moveName}</span>
                     <span
                       className="battle-command-speed"
