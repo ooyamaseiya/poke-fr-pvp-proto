@@ -5,16 +5,16 @@
       "id": "0383",
       "name": "グラードン",
       "sprites": {
-        "back": "./assets/0383_グラードン_back.png",
-        "front": "./assets/0383_グラードン_front.png"
+        "front": "./assets/0383_front.png",
+        "back": "./assets/0383_back.png"
       }
     },
     {
       "id": "0483",
       "name": "ディアルガ",
       "sprites": {
-        "back": "./assets/0483_ディアルガ_back.png",
-        "front": "./assets/0483_ディアルガ_front.png"
+        "front": "./assets/0483_front.png",
+        "back": "./assets/0483_back.png"
       }
     }
   ]

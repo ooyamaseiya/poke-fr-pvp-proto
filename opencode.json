@@ -22,12 +22,11 @@
             "output": 8192
           }
         },
-        "gpt-oss-20b-mxfp4-GGUF": {
-          "name": "GPT OSS 20B",
+        "Ternary-Bonsai-2.5-27B-GGUF-Ternary-Bonsai-2.5-27B-Q2_0-mtp": {
+          "name": "Bonsai2.5 27B",
           "reasoning": true,
           "limit": {
-            "context": 122880,
-            "output": 16384
+            "context": 102400
           }
         },
         "gemma-4-26B-A4B-it-qat-q4_0-gguf-Q4_0": {
