@@ -17,11 +17,28 @@ function currentHp(p) {
   return p.hp ?? p.maxHp;
 }
 
-// ブラインド選択のターンフェーズ（Step 2-2）
+// ブラインド選択のターンフェーズ（Step 2-2）+ すばやさ判定結果（Step 2-3a）
 const PHASE_SELECT_P1 = "SELECT_P1";
 const PHASE_HANDOVER_TO_P2 = "HANDOVER_TO_P2";
 const PHASE_SELECT_P2 = "SELECT_P2";
-const PHASE_CONFIRM_SELECTION = "CONFIRM_SELECTION";
+const PHASE_SPEED_RESULT = "SPEED_RESULT";
+
+// すばやさ比較による先攻・後攻の決定（純粋関数：Step 2-3a）
+// 同速の場合はランダムで先攻を決め、isTie = true を返す。
+function determineTurnOrder(p1Pokemon, p2Pokemon) {
+  if (p1Pokemon.spd > p2Pokemon.spd) {
+    return { first: "P1", second: "P2", isTie: false };
+  }
+  if (p2Pokemon.spd > p1Pokemon.spd) {
+    return { first: "P2", second: "P1", isTie: false };
+  }
+  const first = Math.random() < 0.5 ? "P1" : "P2";
+  return {
+    first,
+    second: first === "P1" ? "P2" : "P1",
+    isTie: true,
+  };
+}
 
 // バトル画面（Step 2-1：見た目のUIレイアウト + Step 2-2：P1選択→目隠し→P2選択→確認の画面遷移）
 // P1 / P2 の先発3体が上下で向かい合う、ポケモン金銀風の画面。
@@ -31,6 +48,8 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
   const [turnPhase, setTurnPhase] = useState(PHASE_SELECT_P1);
   const [p1SelectedIndex, setP1SelectedIndex] = useState(null);
   const [p2SelectedIndex, setP2SelectedIndex] = useState(null);
+  // 先攻・後攻の判定結果（Step 2-3a：P2選択後に決定）
+  const [turnOrder, setTurnOrder] = useState(null);
 
   // P1が選んだ：インデックス保存 → 即座に目隠し画面へ
   const selectP1 = (i) => {
@@ -38,16 +57,19 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
     setTurnPhase(PHASE_HANDOVER_TO_P2);
   };
 
-  // P2が選んだ：インデックス保存 → 選択結果確認へ
+  // P2が選んだ：インデックス保存 → すばやさ比較で先攻・後攻を決定 → 結果表示へ
   const selectP2 = (i) => {
     setP2SelectedIndex(i);
-    setTurnPhase(PHASE_CONFIRM_SELECTION);
+    const result = determineTurnOrder(p1[p1SelectedIndex], p2[i]);
+    setTurnOrder(result);
+    setTurnPhase(PHASE_SPEED_RESULT);
   };
 
-  // リセット：両選択を null に戻し、P1選択から再開
+  // リセット：両選択と判定結果を null に戻し、P1選択から再開
   const resetSelection = () => {
     setP1SelectedIndex(null);
     setP2SelectedIndex(null);
+    setTurnOrder(null);
     setTurnPhase(PHASE_SELECT_P1);
   };
 
@@ -60,8 +82,14 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
     message = "P1の ターン！ こうげきする ポケモンを えらんでね！";
   } else if (turnPhase === PHASE_SELECT_P2) {
     message = "P2の ターン！ こうげきする ポケモンを えらんでね！";
-  } else if (turnPhase === PHASE_CONFIRM_SELECTION) {
-    message = `P1は ${p1Selected?.name}！ P2は ${p2Selected?.name}を えらんだ！`;
+  } else if (turnPhase === PHASE_SPEED_RESULT && turnOrder) {
+    const firstPokemon =
+      turnOrder.first === "P1" ? p1Selected : p2Selected;
+    if (turnOrder.isTie) {
+      message = `すばやさが おなじ(▲${p1Selected?.spd})！ ランダムで せんこうは ${turnOrder.first} の ${firstPokemon?.name} に きまった！`;
+    } else {
+      message = `P1(▲${p1Selected?.spd}) vs P2(▲${p2Selected?.spd})！ せんこうは ${turnOrder.first} の ${firstPokemon?.name}！`;
+    }
   } else {
     message = "";
   }
@@ -91,7 +119,7 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
             <div
               key={`${p.id}-${i}`}
               className={`battle-card ${
-                turnPhase === PHASE_CONFIRM_SELECTION && i === p2SelectedIndex
+                turnPhase === PHASE_SPEED_RESULT && i === p2SelectedIndex
                   ? "battle-card-selected battle-card-selected-p2"
                   : ""
               }`}
@@ -110,6 +138,18 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
                 src={p.sprites.front}
                 alt={p.name}
               />
+              {/* すばやさ判定結果バッジ：先攻「1st せんこう」/ 後攻「2nd こうこう」 */}
+              {turnPhase === PHASE_SPEED_RESULT && i === p2SelectedIndex && (
+                <span
+                  className={`battle-order-badge ${
+                    turnOrder.first === "P2"
+                      ? "battle-order-badge-first"
+                      : "battle-order-badge-second"
+                  }`}
+                >
+                  {turnOrder.first === "P2" ? "1st せんこう" : "2nd こうこう"}
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -123,7 +163,7 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
             <div
               key={`${p.id}-${i}`}
               className={`battle-card ${
-                turnPhase === PHASE_CONFIRM_SELECTION && i === p1SelectedIndex
+                turnPhase === PHASE_SPEED_RESULT && i === p1SelectedIndex
                   ? "battle-card-selected battle-card-selected-p1"
                   : ""
               }`}
@@ -145,6 +185,18 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
                   {currentHp(p)}/{p.maxHp}
                 </span>
               </div>
+              {/* すばやさ判定結果バッジ：先攻「1st せんこう」/ 後攻「2nd こうこう」 */}
+              {turnPhase === PHASE_SPEED_RESULT && i === p1SelectedIndex && (
+                <span
+                  className={`battle-order-badge ${
+                    turnOrder.first === "P1"
+                      ? "battle-order-badge-first"
+                      : "battle-order-badge-second"
+                  }`}
+                >
+                  {turnOrder.first === "P1" ? "1st せんこう" : "2nd こうこう"}
+                </span>
+              )}
             </div>
           ))}
         </div>

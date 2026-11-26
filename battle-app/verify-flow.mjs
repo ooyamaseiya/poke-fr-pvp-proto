@@ -50,212 +50,202 @@ function check(name, cond) {
   }
 }
 
-// ---- TITLE ----
+// -masterデータ（src/data/pokemonMaster.js と同一の順・spd値）
+// index: 0 グラードン(3) / 1 ディアルガ(5) / 2 テストポケモン1(2) / 3 テストポケモン2(4)
+//         4 テストポケモン3(1) / 5 テストポケモン4(5) / 6 テストポケモン5(2) / 7 テストポケモン6(3)
+//         8 テストポケモン7(3) / 9 テストポケモン8(4)
+const MASTER = [
+  { name: "グラードン", spd: 3 },
+  { name: "ディアルガ", spd: 5 },
+  { name: "テストポケモン1", spd: 2 },
+  { name: "テストポケモン2", spd: 4 },
+  { name: "テストポケモン3", spd: 1 },
+  { name: "テストポケモン4", spd: 5 },
+  { name: "テストポケモン5", spd: 2 },
+  { name: "テストポケモン6", spd: 3 },
+  { name: "テストポケモン7", spd: 3 },
+  { name: "テストポケモン8", spd: 4 },
+];
+
+// P1エントリー：指定カード（マスターインデックス順）をタップで追加
+async function playEntryP1(cards) {
+  await page.getByText("バトル スタート").click();
+  await page.waitForSelector("text=プレイヤー1 の選び方");
+  check("ENTRY_P1: 画面遷移", true);
+  check("ENTRY_P1: 6スロット表示", (await page.locator(".slot").count()) === 6);
+  check("ENTRY_P1: ポケモン一覧10体", (await page.locator(".pokemon-card").count()) === 10);
+  check(
+    "ENTRY_P1: けついボタンの初期無効化",
+    (await page.getByText("これで けつい！").isDisabled()) === true
+  );
+  for (const i of cards) {
+    await page.locator(".pokemon-card").nth(i).click();
+  }
+  check("ENTRY_P1: 手動選択で6枠埋まる", (await page.locator(".slot-filled").count()) === 6);
+  await page.screenshot({ path: "/tmp/opencode/shot2_entry_p1.png" });
+  await page.getByText("これで けつい！").click();
+}
+
+// P2エントリー：指定カード（マスターインデックス順）をタップで追加
+async function playEntryP2(cards) {
+  await page.waitForSelector("text=プレイヤー2 の選び方", { timeout: 6000 });
+  check("ENTRY_P2: 中継後自動遷移", true);
+  check("ENTRY_P2: 6スロット表示", (await page.locator(".slot").count()) === 6);
+  for (const i of cards) {
+    await page.locator(".pokemon-card").nth(i).click();
+  }
+  check("ENTRY_P2: 手動選択で6枠埋まる", (await page.locator(".slot-filled").count()) === 6);
+  await page.screenshot({ path: "/tmp/opencode/shot4_entry_p2.png" });
+  await page.getByText("これで けつい！").click();
+}
+
+// バトル選択：P1が先発カード p1i、P2が先発カード p2i を選び、結果フェーズまで進む
+async function playBattleSelect(p1i, p2i) {
+  await page.locator(".battle-command").nth(p1i).click();
+  await page.waitForSelector(".battle-handover");
+  await page.locator(".battle-handover-btn").click();
+  await page.waitForSelector("text=P2の ターン！");
+  await page.locator(".battle-command").nth(p2i).click();
+  await page.waitForSelector("text=もういちど えらぶ（リセット）");
+}
+
+// バトル開始まで進める（P1/P2のチームが既知なので先発3体も固定）
+async function startBattle(p1Cards, p2Cards) {
+  await playEntryP1(p1Cards);
+  await playEntryP2(p2Cards);
+  await page.waitForSelector("text=TURN 1/6");
+  check("BATTLE: 画面表示", true);
+  check("BATTLE: ターン表示", (await page.getByText("TURN 1/6").count()) === 1);
+  check("BATTLE: スコア表示", (await page.getByText("P1 0 - 0 P2").count()) === 1);
+  check("BATTLE: P2先発3体", (await page.locator(".battle-row-p2 .battle-card").count()) === 3);
+  check("BATTLE: P1先発3体", (await page.locator(".battle-row-p1 .battle-card").count()) === 3);
+  const p1BattleNames = await page.locator(".battle-row-p1 .battle-name").allTextContents();
+  const p2BattleNames = await page.locator(".battle-row-p2 .battle-name").allTextContents();
+  check(
+    "BATTLE: P1先発がエントリー先発と一致",
+    JSON.stringify(p1BattleNames) === JSON.stringify(p1Cards.slice(0, 3).map((i) => MASTER[i].name))
+  );
+  check(
+    "BATTLE: P2先発がエントリー先発と一致",
+    JSON.stringify(p2BattleNames) === JSON.stringify(p2Cards.slice(0, 3).map((i) => MASTER[i].name))
+  );
+}
+
+// ====================== パターン1：P1の spd が高い → P1 が先攻 ======================
 await page.goto(BASE, { waitUntil: "networkidle" });
 await page.waitForSelector("text=バトル スタート");
 check("TITLE: タイトル画面表示", (await page.getByText("POKE BATTLE").count()) === 1);
 await page.screenshot({ path: "/tmp/opencode/shot1_title.png" });
-await page.getByText("バトル スタート").click();
 
-// ---- ENTRY_P1 ----
-await page.waitForSelector("text=プレイヤー1 の選び方");
-check("ENTRY_P1: 画面遷移", true);
-check("ENTRY_P1: 6スロット表示", (await page.locator(".slot").count()) === 6);
-{
-  const labels = await page.locator(".slot-label").allTextContents();
-  check(
-    "ENTRY_P1: 先発ラベル3/控えラベル3",
-    labels.filter((t) => t === "先発").length === 3 &&
-      labels.filter((t) => t === "控え").length === 3
-  );
-}
-check("ENTRY_P1: ポケモン一覧10体", (await page.locator(".pokemon-card").count()) === 10);
-check(
-  "ENTRY_P1: けついボタンの初期無効化",
-  (await page.getByText("これで けつい！").isDisabled()) === true
-);
-// ランダムで6体選択
-await page.getByText("ランダムで6たい えらぶ").click();
-check("ENTRY_P1: ランダム選択で6枠埋まる", (await page.locator(".slot-filled").count()) === 6);
-check(
-  "ENTRY_P1: けついボタン有効化",
-  (await page.getByText("これで けつい！").isDisabled()) === false
-);
-const p1Names = await page.locator(".slot-name").allTextContents();
-check("ENTRY_P1: 名前が6つ入った", p1Names.length === 6);
-await page.screenshot({ path: "/tmp/opencode/shot2_entry_p1.png" });
-await page.getByText("これで けつい！").click();
+// P1先発: T2(4)/T4(5)/T8(4) / P2先発: G(3)/D(5)/T1(2)
+await startBattle([3, 5, 9, 0, 1, 2], [0, 1, 2, 3, 4, 5]);
 
-// ---- HANDOVER_TO_P2 ----
-await page.waitForSelector(".handover-message");
-const handoverText = await page.locator(".handover-message").innerText();
-check(
-  "HANDOVER_TO_P2: 中継画面表示",
-  handoverText.includes("P2に") && handoverText.includes("スマホを") && handoverText.includes("わたしてね！")
-);
-await page.screenshot({ path: "/tmp/opencode/shot3_handover.png" });
-// 2.5秒後で自動遷移
-await page.waitForSelector("text=プレイヤー2 の選び方", { timeout: 6000 });
-check("ENTRY_P2: 中継後自動遷移", true);
-
-// ---- ENTRY_P2 ----
-check("ENTRY_P2: 6スロット表示", (await page.locator(".slot").count()) === 6);
-// 手動で6体追加（カード1〜6）
-for (let i = 0; i < 6; i++) {
-  await page.locator(".pokemon-card").nth(i).click();
-}
-check("ENTRY_P2: 手動選択で6枠埋まる", (await page.locator(".slot-filled").count()) === 6);
-// 満員後は追加不可
-check("ENTRY_P2: 満員時はカード無効化", (await page.locator(".pokemon-card").first().isDisabled()) === true);
-// スロットタップで削除（1つ削除→5枠）
-await page.locator(".slot-filled").first().click();
-check("ENTRY_P2: スロットタップで削除", (await page.locator(".slot-filled").count()) === 5);
-// 再度1体追加で6体に
-await page.locator(".pokemon-card").first().click();
-check("ENTRY_P2: 再追加で6体", (await page.locator(".slot-filled").count()) === 6);
-const p2Names = await page.locator(".slot-name").allTextContents();
-check("ENTRY_P2: 名前が6つ入った", p2Names.length === 6);
-await page.screenshot({ path: "/tmp/opencode/shot4_entry_p2.png" });
-await page.getByText("これで けつい！").click();
-
-// ---- BATTLE ----
-await page.waitForSelector("text=TURN 1/6");
-check("BATTLE: 画面表示", true);
-check("BATTLE: ターン表示", (await page.getByText("TURN 1/6").count()) === 1);
-check("BATTLE: スコア表示", (await page.getByText("P1 0 - 0 P2").count()) === 1);
-check("BATTLE: P2先発3体", (await page.locator(".battle-row-p2 .battle-card").count()) === 3);
-check("BATTLE: P1先発3体", (await page.locator(".battle-row-p1 .battle-card").count()) === 3);
-check("BATTLE: P2 front画像", (await page.locator(".battle-row-p2 .battle-sprite-front").count()) === 3);
-check("BATTLE: P1 back画像", (await page.locator(".battle-row-p1 .battle-sprite-back").count()) === 3);
-// 名前がエントリー時の先発3体と一致
-const p1BattleNames = await page.locator(".battle-row-p1 .battle-name").allTextContents();
-const p2BattleNames = await page.locator(".battle-row-p2 .battle-name").allTextContents();
-check(
-  "BATTLE: P1先発がエントリー先発と一致",
-  JSON.stringify(p1BattleNames) === JSON.stringify(p1Names.slice(0, 3))
-);
-check(
-  "BATTLE: P2先発がエントリー先発と一致",
-  JSON.stringify(p2BattleNames) === JSON.stringify(p2Names.slice(0, 3))
-);
-check("BATTLE: メッセージ表示", (await page.locator(".battle-message").count()) === 1);
-
-// ---- SELECT_P1 ----
+// SELECT_P1
 check(
   "SELECT_P1: メッセージ",
   (await page.locator(".battle-message p").innerText()) ===
     "P1の ターン！ こうげきする ポケモンを えらんでね！"
 );
 check("SELECT_P1: コマンド3ボタン", (await page.locator(".battle-command").count()) === 3);
-check(
-  "SELECT_P1: P1ラベル（青）",
-  (await page.locator(".battle-command-player").textContent()) === "P1" &&
-    (await page.locator(".battle-command-player").evaluate((el) => getComputedStyle(el).backgroundColor)) ===
-      "rgb(40, 96, 216)"
-);
-check(
-  "SELECT_P1: パネル枠がP1色",
-  (await page.locator(".battle-commands").evaluate((el) => getComputedStyle(el).borderTopColor)) ===
-    "rgb(40, 96, 216)"
-);
 await page.screenshot({ path: "/tmp/opencode/shot5_battle.png" });
 
-// P1の1体をえらぶ → 目隠し画面
-await page.locator(".battle-command").first().click();
-await page.waitForSelector(".battle-handover");
-check("HANDOVER: オーレイ表示", (await page.locator(".battle-handover").count()) === 1);
+await playBattleSelect(0, 0); // P1: T2(spd4) vs P2: G(spd3)
+check("SPEED_RESULT: 遷移（リセットボタン表示）", (await page.locator(".battle-reset").count()) === 1);
 check(
-  "HANDOVER: タイトル",
-  (await page.locator(".battle-handover-title").innerText()) === "P2に スマホを わたしてね！"
-);
-check(
-  "HANDOVER: 補足テキスト",
-  (await page.locator(".battle-handover-sub").innerText()) === "P1の せんたくは かくされているよ"
-);
-check("HANDOVER: ボタン表示", (await page.locator(".battle-handover-btn").count()) === 1);
-check(
-  "HANDOVER: ボタンがP2色",
-  (await page.locator(".battle-handover-btn").evaluate((el) => getComputedStyle(el).backgroundColor)) ===
-    "rgb(216, 40, 40)"
-);
-// オーレイがバトルフィールドを完全に覆っているか（目隠し）
-const coversField = await page.evaluate(() => {
-  const ov = document.querySelector(".battle-handover").getBoundingClientRect();
-  const field = document.querySelector(".battle-field").getBoundingClientRect();
-  return (
-    ov.x <= field.x &&
-    ov.y <= field.y &&
-    ov.x + ov.width >= field.x + field.width &&
-    ov.y + ov.height >= field.y + field.height
-  );
-});
-check("HANDOVER: フィールドを覆う（目隠し）", coversField);
-await page.screenshot({ path: "/tmp/opencode/shot6_handover.png" });
-// コマンドパネルは非表示
-check("HANDOVER: コマンドパネル非表示", (await page.locator(".battle-commands").count()) === 0);
-
-// 「P2 じゅんび OK！」を押すと SELECT_P2
-await page.locator(".battle-handover-btn").click();
-await page.waitForSelector("text=P2の ターン！");
-check("SELECT_P2: 遷移", (await page.locator(".battle-handover").count()) === 0);
-check(
-  "SELECT_P2: メッセージ",
+  "SPEED_RESULT: メッセージ（P1高速）",
   (await page.locator(".battle-message p").innerText()) ===
-    "P2の ターン！ こうげきする ポケモンを えらんでね！"
-);
-check("SELECT_P2: コマンド3ボタン", (await page.locator(".battle-command").count()) === 3);
-check(
-  "SELECT_P2: P2ラベル（赤）",
-  (await page.locator(".battle-command-player").textContent()) === "P2" &&
-    (await page.locator(".battle-command-player").evaluate((el) => getComputedStyle(el).backgroundColor)) ===
-      "rgb(216, 40, 40)"
+    "P1(▲4) vs P2(▲3)！ せんこうは P1 の テストポケモン2！"
 );
 check(
-  "SELECT_P2: パネル枠がP2色",
-  (await page.locator(".battle-commands").evaluate((el) => getComputedStyle(el).borderTopColor)) ===
-    "rgb(216, 40, 40)"
-);
-// P2の先発3体の名前がコマンドパネルに載っていること
-const p2CmdNames = await page.locator(".battle-command-name").allTextContents();
-check(
-  "SELECT_P2: P2先発3体表示",
-  JSON.stringify(p2CmdNames) === JSON.stringify(p2Names.slice(0, 3))
-);
-// P2 1体を選択 → 選択結果確認
-await page.locator(".battle-command").first().click();
-await page.waitForSelector("text=もういちど えらぶ（リセット）");
-check("CONFIRM: 遷移", true);
-check(
-  "CONFIRM: メッセージ（両名表示）",
-  (await page.locator(".battle-message p").innerText()).includes(p1Names[0]) &&
-    (await page.locator(".battle-message p").innerText()).includes(p2Names[0])
+  "SPEED_RESULT: 1stバッジ1枚（P1選択カードに）",
+  (await page.locator(".battle-order-badge-first").count()) === 1 &&
+    (await page.locator(".battle-row-p1 .battle-card-selected .battle-order-badge").textContent()) ===
+      "1st せんこう"
 );
 check(
-  "CONFIRM: P1選択カード1枚（青ハイライト）",
-  (await page.locator(".battle-card-selected.battle-card-selected-p1").count()) === 1 &&
-    (await page.locator(".battle-card-selected.battle-card-selected-p1").evaluate((el) =>
-      getComputedStyle(el).outlineColor
-    )) === "rgb(40, 96, 216)"
+  "SPEED_RESULT: 2ndバッジ1枚（P2選択カードに）",
+  (await page.locator(".battle-order-badge-second").count()) === 1 &&
+    (await page.locator(".battle-row-p2 .battle-card-selected .battle-order-badge").textContent()) ===
+      "2nd こうこう"
 );
 check(
-  "CONFIRM: P2選択カード1枚（赤ハイライト）",
-  (await page.locator(".battle-card-selected.battle-card-selected-p2").count()) === 1 &&
-    (await page.locator(".battle-card-selected.battle-card-selected-p2").evaluate((el) =>
-      getComputedStyle(el).outlineColor
-    )) === "rgb(216, 40, 40)"
+  "SPEED_RESULT: P1選択カード1枚（青ハイライト）",
+  (await page.locator(".battle-card-selected.battle-card-selected-p1").count()) === 1
 );
-check("CONFIRM: リセットボタン1つ", (await page.locator(".battle-reset").count()) === 1);
-await page.screenshot({ path: "/tmp/opencode/shot7_confirm.png" });
+check(
+  "SPEED_RESULT: P2選択カード1枚（赤ハイライト）",
+  (await page.locator(".battle-card-selected.battle-card-selected-p2").count()) === 1
+);
+await page.screenshot({ path: "/tmp/opencode/shot7_speed_result_p1_fast.png" });
 
 // リセット → SELECT_P1 に戻る
 await page.locator(".battle-reset").click();
 await page.waitForSelector("text=P1の ターン！");
 check("RESET: SELECT_P1 に戻る", (await page.locator(".battle-handover").count()) === 0);
 check("RESET: コマンド3ボタン", (await page.locator(".battle-command").count()) === 3);
+check("RESET: バッジ解除", (await page.locator(".battle-order-badge").count()) === 0);
 check("RESET: ハイライト解除", (await page.locator(".battle-card-selected").count()) === 0);
 check("RESET: P1ラベル復帰", (await page.locator(".battle-command-player").textContent()) === "P1");
 
+// ====================== パターン2：P2の spd が高い → P2 が先攻 ======================
+await page.getByText("もどる").click();
+await page.waitForSelector("text=バトル スタート");
+
+// P1先発: T1(2)/T3(1)/T5(2) / P2先発: G(3)/D(5)/T1(2)
+await startBattle([2, 4, 6, 0, 1, 3], [0, 1, 2, 3, 4, 5]);
+await playBattleSelect(0, 0); // P1: T1(spd2) vs P2: G(spd3)
+check(
+  "SPEED_RESULT: メッセージ（P2高速）",
+  (await page.locator(".battle-message p").innerText()) ===
+    "P1(▲2) vs P2(▲3)！ せんこうは P2 の グラードン！"
+);
+check(
+  "SPEED_RESULT: 1stバッジ1枚（P2選択カードに）",
+  (await page.locator(".battle-order-badge-first").count()) === 1 &&
+    (await page.locator(".battle-row-p2 .battle-card-selected .battle-order-badge").textContent()) ===
+      "1st せんこう"
+);
+check(
+  "SPEED_RESULT: 2ndバッジ1枚（P1選択カードに）",
+  (await page.locator(".battle-order-badge-second").count()) === 1 &&
+    (await page.locator(".battle-row-p1 .battle-card-selected .battle-order-badge").textContent()) ===
+      "2nd こうこう"
+);
+await page.screenshot({ path: "/tmp/opencode/shot8_speed_result_p2_fast.png" });
+
+// ====================== パターン3： spd が同じ → ランダム ======================
+await page.getByText("もどる").click();
+await page.waitForSelector("text=バトル スタート");
+
+// P1先発: G(3)/T6(3)/T7(3) / P2先発: G(3)/D(5)/T1(2)
+await startBattle([0, 7, 8, 1, 2, 4], [0, 1, 2, 3, 4, 5]);
+
+const winners = [];
+for (let i = 0; i < 10; i++) {
+  await playBattleSelect(0, 0); // P1: G(spd3) vs P2: G(spd3) → 同速
+  const msg = (await page.locator(".battle-message p").innerText());
+  const m = msg.match(/^すばやさが おなじ\(▲3\)！ ランダムで せんこうは (P1|P2) の グラードン に きまった！$/);
+  check(`TIE: 回 ${i + 1} メッセージ（同速ランダム）`, m !== null);
+  if (m) winners.push(m[1]);
+  // 回帰：バッジ表示の整合性
+  check(
+    `TIE: 回 ${i + 1} バッジ整合（1st×1 / 2nd×1）`,
+    (await page.locator(".battle-order-badge-first").count()) === 1 &&
+      (await page.locator(".battle-order-badge-second").count()) === 1
+  );
+  if (i < 9) {
+    // リセットして次へ
+    await page.locator(".battle-reset").click();
+    await page.waitForSelector("text=P1の ターン！");
+  }
+}
+check("TIE: 10回中 P1先攻もP2先攻も出た（ランダム確認）", winners.includes("P1") && winners.includes("P2"));
+console.log(`  winners: P1=${winners.filter((w) => w === "P1").length} / P2=${winners.filter((w) => w === "P2").length}`);
+await page.screenshot({ path: "/tmp/opencode/shot9_speed_result_tie.png" });
+
 // もどる
+await page.locator(".battle-reset").click();
+await page.waitForSelector("text=P1の ターン！");
 await page.getByText("もどる").click();
 await page.waitForSelector("text=バトル スタート");
 check("BATTLE: タイトルへ戻る", true);

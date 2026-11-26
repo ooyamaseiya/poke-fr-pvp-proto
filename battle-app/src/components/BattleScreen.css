@@ -94,7 +94,7 @@
   gap: 4px;
 }
 
-/* 選択中のポケモンの強調枠（選択結果確認フェーズ） */
+/* 選択中のポケモンの強調枠（すばやさ判定結果フェーズ） */
 .battle-card-selected {
   outline: 3px solid var(--p1);
   outline-offset: 2px;
@@ -102,6 +102,24 @@
 
 .battle-card-selected-p2 {
   outline-color: var(--p2);
+}
+
+/* すばやさ判定結果バッジ（金銀風の小さなバッジ） */
+.battle-order-badge {
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: #fff;
+  border: 2px solid var(--ink);
+  padding: 1px 4px;
+}
+
+/* 先攻：金の色で強調 */
+.battle-order-badge-first {
+  background: #ffe13b;
+  border: 3px solid var(--ink);
 }
 
 /* 中央：対戦の距離感（うっすら中央線） */
