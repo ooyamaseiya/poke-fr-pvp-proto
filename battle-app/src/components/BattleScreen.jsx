@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { LEAD_COUNT, POKEMON_MASTER } from "../data/pokemonMaster.js";
+import BenchSelectModal from "./BenchSelectModal.jsx";
 import "./BattleScreen.css";
 
 // 開発中、props が未定義でもクラッシュしないためのダミーフォールバック
@@ -88,6 +89,7 @@ const PHASE_SELECT_P2 = "SELECT_P2";
 const PHASE_SPEED_RESULT = "SPEED_RESULT";
 const PHASE_EXEC_FIRST = "EXEC_FIRST";
 const PHASE_EXEC_SECOND = "EXEC_SECOND";
+const PHASE_REPLACE_P1 = "REPLACE_P1"; // P1の控え選択中（Step 2-4a-2）
 const PHASE_TEST_END = "TEST_END";
 
 // すばやさ比較による先攻・後攻の決定（純粋関数：Step 2-3a）
@@ -124,6 +126,8 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
   // フィールド上のHP状態（バトル中に更新される：Step 2-3b）
   const [p1Field, setP1Field] = useState(() => makeField(p1));
   const [p2Field, setP2Field] = useState(() => makeField(p2));
+  // P1の控え（p1Teamの後半3体：Step 2-4a-2）。propsが未定義でもクラッシュしないよう安全に取得
+  const [p1Bench, setP1Bench] = useState(() => (p1Team || []).slice(3, 6));
   const [turnPhase, setTurnPhase] = useState(PHASE_SELECT_P1);
   const [p1SelectedIndex, setP1SelectedIndex] = useState(null);
   const [p2SelectedIndex, setP2SelectedIndex] = useState(null);
@@ -228,11 +232,54 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
     setP2SelectedIndex(null);
     setTurnOrder(null);
 
-    // どちらかの先発3体が全員戦闘不能ならテスト終了
-    if (p1F.every((p) => p.isFainted) || p2F.every((p) => p.isFainted)) {
+    // P1交代チェック（Step 2-4a-2）：攻撃計算直後の最新状態（p1F）で判定する
+    if (p1F.some((p) => p.isFainted) && p1Bench.length > 0) {
+      setTurnPhase(PHASE_REPLACE_P1);
+      setMessage("P1の ポケモンが たおれた！ つぎに だす ポケモンを えらんでね！");
+    } else if (p1F.every((p) => p.isFainted) || p2F.every((p) => p.isFainted)) {
+      // どちらかの先発3体が全員戦闘不能ならテスト終了
       setTurnPhase(PHASE_TEST_END);
       setMessage("せんぱつ 3たいが ぜんめつした！ リセットしてね");
     } else {
+      setTurnPhase(PHASE_SELECT_P1);
+    }
+  };
+
+  // P1控えの選択（Step 2-4a-2）：倒れた枠に控えを打ち替え、控えリストから削除
+  const handleSelectP1Bench = (benchIndex) => {
+    // 1. 交代先スロットの特定：最初の戦闘不能枠をを探す
+    const faintedIndex = p1Field.findIndex((p) => p.isFainted);
+    if (faintedIndex === -1) return;
+
+    // 2. フィールドの入れ替え：控えから元気なバトル用ポケモンを生成
+    const benchPokemon = p1Bench[benchIndex];
+    const freshPokemon = {
+      ...benchPokemon,
+      currentHp: benchPokemon.maxHp,
+      isFainted: false,
+      fatigueTurns: 0,
+    };
+    const nextP1Field = p1Field.map((p, i) =>
+      i === faintedIndex ? freshPokemon : p
+    );
+
+    // 3. 控えリストからの削除
+    const nextP1Bench = p1Bench.filter((_, i) => i !== benchIndex);
+
+    // 4. State更新とメッセージ表示
+    setP1Field(nextP1Field);
+    setP1Bench(nextP1Bench);
+    setMessage(`P1 は ${benchPokemon.name} を くりだした！`);
+
+    // 5. 複数体同時ダウンの継続判定
+    if (nextP1Field.some((p) => p.isFainted) && nextP1Bench.length > 0) {
+      // 交代が完了していない：次の交代モーダルを表示し続ける
+      setTurnPhase(PHASE_REPLACE_P1);
+    } else {
+      // P1の交代がすべて完了：選択状態をリセットして次のターンへ
+      setP1SelectedIndex(null);
+      setP2SelectedIndex(null);
+      setTurnOrder(null);
       setTurnPhase(PHASE_SELECT_P1);
     }
   };
@@ -249,6 +296,7 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
   const resetAll = () => {
     setP1Field(makeField(p1));
     setP2Field(makeField(p2));
+    setP1Bench((p1Team || []).slice(3, 6));
     setP1SelectedIndex(null);
     setP2SelectedIndex(null);
     setTurnOrder(null);
@@ -260,7 +308,12 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
 
   // メッセージウィンドウのテキスト（フェーズごとに切替）
   let displayMessage;
-  if (turnPhase === PHASE_EXEC_FIRST || turnPhase === PHASE_EXEC_SECOND || turnPhase === PHASE_TEST_END) {
+  if (
+    turnPhase === PHASE_EXEC_FIRST ||
+    turnPhase === PHASE_EXEC_SECOND ||
+    turnPhase === PHASE_REPLACE_P1 ||
+    turnPhase === PHASE_TEST_END
+  ) {
     displayMessage = message;
   } else if (turnPhase === PHASE_SELECT_P1) {
     displayMessage = "P1の ターン！ こうげきする ポケモンを えらんでね！";
@@ -289,6 +342,9 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
         <span className="battle-turn">TURN 1/6</span>
         <div className="battle-header-right">
           <span className="battle-score">P1 0 - 0 P2</span>
+          <span className="battle-bench-count" title="P1の控え残数">
+            P1ひかえ: {p1Bench.length}
+          </span>
           <button className="battle-reset-hp" onClick={resetAll} title="テスト用：全HP回復して最初からやり直す">
             HPリセット
           </button>
@@ -516,6 +572,14 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
           </div>
         </div>
       )}
+
+      {/* ⑥ P1控え選択モーダル（Step 2-4a-2） */}
+      <BenchSelectModal
+        isOpen={turnPhase === PHASE_REPLACE_P1}
+        playerLabel="P1"
+        benchPokemons={p1Bench}
+        onSelect={handleSelectP1Bench}
+      />
     </div>
   );
 }
