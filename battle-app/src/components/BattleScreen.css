@@ -64,6 +64,25 @@
   line-height: 1.2;
 }
 
+/* HPリセットボタン（テスト用：全員のHPを全回復して最初からやり直す） */
+.battle-reset-hp {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--ink);
+  background: #ffe13b;
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  padding: 2px 8px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.battle-reset-hp:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
 .battle-back:active {
   transform: translate(2px, 2px);
   box-shadow: 0 0 0 var(--ink);
@@ -148,6 +167,12 @@
   height: 100px;
 }
 
+/* 戦闘不能（isFainted）の立ち絵：グレースケール＋半透明（Step 2-3b） */
+.battle-sprite-fainted {
+  opacity: 0.3;
+  filter: grayscale(100%);
+}
+
 /* コンパクトなステータス枠（名前・HPバー） */
 .battle-status {
   width: 100%;
@@ -181,6 +206,8 @@
 .hp-fill {
   height: 100%;
   background: #30b830;
+  /* ダメージ時にHPバーが滑らかに減る（Step 2-3b） */
+  transition: width 0.5s linear;
 }
 
 .battle-hp {
@@ -266,6 +293,14 @@
   gap: 6px;
 }
 
+/* 攻撃実行中は「……」を表示して進行中であることを示す */
+.battle-commands-waiting {
+  margin: auto;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
 /* リセットボタン（選択結果確認フェーズ用） */
 .battle-reset {
   width: 100%;
@@ -305,6 +340,24 @@
 .battle-command:active {
   transform: translate(2px, 2px);
   box-shadow: 0 0 0 var(--ink);
+}
+
+/* 戦闘不能のポケモンは選択不可（disabled + ひんしラベル：Step 2-3b） */
+.battle-command:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.battle-command:disabled:active {
+  transform: none;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.battle-command-fainted {
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #999;
 }
 
 .battle-command-name {
