@@ -1,0 +1,167 @@
+/* ===== 控え選択モーダル（Step 2-4a-1）===== */
+/* 金銀風：DotGothic16 / ドット絵 / #F8F8F8背景＋太め黒枠＋二重枠 / スマホ縦画面 */
+
+/* オーレイ（背景）：画面全体を覆う */
+.bench-select-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* モーダル本体（金銀風ウィンドウ） */
+.bench-select-modal-window {
+  width: 90%;
+  max-width: 380px;
+  background: #F8F8F8;
+  color: #181818;
+  font-family: "DotGothic16", "Dot Gothic 16", monospace, sans-serif;
+  border: 4px solid #181818;
+  /* 金銀風二重枠：外側4px黒 → 白2px → 内側黒2px */
+  box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px #181818;
+  padding: 16px;
+  user-select: none;
+}
+
+/* ヘッダー（playerLabel でアクセントカラーを切り替え） */
+.bench-select-modal-header {
+  background: #fff;
+  border-bottom: 3px solid #181818;
+  padding: 10px 8px 8px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+/* P1：青 */
+.bench-select-modal-header-p1 {
+  background: #2860D8;
+  color: #fff;
+}
+
+/* P2：赤 */
+.bench-select-modal-header-p2 {
+  background: #D82828;
+  color: #fff;
+}
+
+.bench-select-modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  line-height: 1.4;
+}
+
+.bench-select-modal-sub {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1.3;
+}
+
+/* 控えポケモン選択リスト（縦並びの大きなタップボタン） */
+.bench-select-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bench-select-modal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 3px solid #181818;
+  box-shadow: 2px 2px 0 #181818;
+  padding: 8px;
+  font-family: inherit;
+  color: #181818;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* ホバー：背景を少し変える */
+.bench-select-modal-row:hover {
+  background: #e8e8e8;
+}
+
+/* アクティブ：枠色・背景の変化＋金銀風押し込み */
+.bench-select-modal-row:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #181818;
+  background: #ffe13b;
+}
+
+/* 立ち絵（ドット絵：ピクセル描画） */
+.bench-select-modal-sprite {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  border: 2px solid #181818;
+  background: #fff;
+}
+
+/* 中央：ポケモン名 ＋ 技名 */
+.bench-select-modal-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bench-select-modal-name {
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bench-select-modal-move {
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 右側：HP ＋ すばやさ段階 */
+.bench-select-modal-stats {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.bench-select-modal-hp {
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.bench-select-modal-speed {
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+/* 空配列時のフォールバック */
+.bench-select-modal-empty {
+  margin: 16px 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.4;
+  color: #999;
+}
