@@ -139,13 +139,122 @@ check(
   JSON.stringify(p2BattleNames) === JSON.stringify(p2Names.slice(0, 3))
 );
 check("BATTLE: メッセージ表示", (await page.locator(".battle-message").count()) === 1);
-check("BATTLE: コマンド3ボタン", (await page.locator(".battle-command").count()) === 3);
-// コマンドタップで強調（押すとON、再押すとOFF）
-await page.locator(".battle-command").first().click();
-check("BATTLE: コマンド強調ON", (await page.locator(".battle-command-active").count()) === 1);
-await page.locator(".battle-command").first().click();
-check("BATTLE: コマンド強調OFF", (await page.locator(".battle-command-active").count()) === 0);
+
+// ---- SELECT_P1 ----
+check(
+  "SELECT_P1: メッセージ",
+  (await page.locator(".battle-message p").innerText()) ===
+    "P1の ターン！ こうげきする ポケモンを えらんでね！"
+);
+check("SELECT_P1: コマンド3ボタン", (await page.locator(".battle-command").count()) === 3);
+check(
+  "SELECT_P1: P1ラベル（青）",
+  (await page.locator(".battle-command-player").textContent()) === "P1" &&
+    (await page.locator(".battle-command-player").evaluate((el) => getComputedStyle(el).backgroundColor)) ===
+      "rgb(40, 96, 216)"
+);
+check(
+  "SELECT_P1: パネル枠がP1色",
+  (await page.locator(".battle-commands").evaluate((el) => getComputedStyle(el).borderTopColor)) ===
+    "rgb(40, 96, 216)"
+);
 await page.screenshot({ path: "/tmp/opencode/shot5_battle.png" });
+
+// P1の1体をえらぶ → 目隠し画面
+await page.locator(".battle-command").first().click();
+await page.waitForSelector(".battle-handover");
+check("HANDOVER: オーレイ表示", (await page.locator(".battle-handover").count()) === 1);
+check(
+  "HANDOVER: タイトル",
+  (await page.locator(".battle-handover-title").innerText()) === "P2に スマホを わたしてね！"
+);
+check(
+  "HANDOVER: 補足テキスト",
+  (await page.locator(".battle-handover-sub").innerText()) === "P1の せんたくは かくされているよ"
+);
+check("HANDOVER: ボタン表示", (await page.locator(".battle-handover-btn").count()) === 1);
+check(
+  "HANDOVER: ボタンがP2色",
+  (await page.locator(".battle-handover-btn").evaluate((el) => getComputedStyle(el).backgroundColor)) ===
+    "rgb(216, 40, 40)"
+);
+// オーレイがバトルフィールドを完全に覆っているか（目隠し）
+const coversField = await page.evaluate(() => {
+  const ov = document.querySelector(".battle-handover").getBoundingClientRect();
+  const field = document.querySelector(".battle-field").getBoundingClientRect();
+  return (
+    ov.x <= field.x &&
+    ov.y <= field.y &&
+    ov.x + ov.width >= field.x + field.width &&
+    ov.y + ov.height >= field.y + field.height
+  );
+});
+check("HANDOVER: フィールドを覆う（目隠し）", coversField);
+await page.screenshot({ path: "/tmp/opencode/shot6_handover.png" });
+// コマンドパネルは非表示
+check("HANDOVER: コマンドパネル非表示", (await page.locator(".battle-commands").count()) === 0);
+
+// 「P2 じゅんび OK！」を押すと SELECT_P2
+await page.locator(".battle-handover-btn").click();
+await page.waitForSelector("text=P2の ターン！");
+check("SELECT_P2: 遷移", (await page.locator(".battle-handover").count()) === 0);
+check(
+  "SELECT_P2: メッセージ",
+  (await page.locator(".battle-message p").innerText()) ===
+    "P2の ターン！ こうげきする ポケモンを えらんでね！"
+);
+check("SELECT_P2: コマンド3ボタン", (await page.locator(".battle-command").count()) === 3);
+check(
+  "SELECT_P2: P2ラベル（赤）",
+  (await page.locator(".battle-command-player").textContent()) === "P2" &&
+    (await page.locator(".battle-command-player").evaluate((el) => getComputedStyle(el).backgroundColor)) ===
+      "rgb(216, 40, 40)"
+);
+check(
+  "SELECT_P2: パネル枠がP2色",
+  (await page.locator(".battle-commands").evaluate((el) => getComputedStyle(el).borderTopColor)) ===
+    "rgb(216, 40, 40)"
+);
+// P2の先発3体の名前がコマンドパネルに載っていること
+const p2CmdNames = await page.locator(".battle-command-name").allTextContents();
+check(
+  "SELECT_P2: P2先発3体表示",
+  JSON.stringify(p2CmdNames) === JSON.stringify(p2Names.slice(0, 3))
+);
+// P2 1体を選択 → 選択結果確認
+await page.locator(".battle-command").first().click();
+await page.waitForSelector("text=もういちど えらぶ（リセット）");
+check("CONFIRM: 遷移", true);
+check(
+  "CONFIRM: メッセージ（両名表示）",
+  (await page.locator(".battle-message p").innerText()).includes(p1Names[0]) &&
+    (await page.locator(".battle-message p").innerText()).includes(p2Names[0])
+);
+check(
+  "CONFIRM: P1選択カード1枚（青ハイライト）",
+  (await page.locator(".battle-card-selected.battle-card-selected-p1").count()) === 1 &&
+    (await page.locator(".battle-card-selected.battle-card-selected-p1").evaluate((el) =>
+      getComputedStyle(el).outlineColor
+    )) === "rgb(40, 96, 216)"
+);
+check(
+  "CONFIRM: P2選択カード1枚（赤ハイライト）",
+  (await page.locator(".battle-card-selected.battle-card-selected-p2").count()) === 1 &&
+    (await page.locator(".battle-card-selected.battle-card-selected-p2").evaluate((el) =>
+      getComputedStyle(el).outlineColor
+    )) === "rgb(216, 40, 40)"
+);
+check("CONFIRM: リセットボタン1つ", (await page.locator(".battle-reset").count()) === 1);
+await page.screenshot({ path: "/tmp/opencode/shot7_confirm.png" });
+
+// リセット → SELECT_P1 に戻る
+await page.locator(".battle-reset").click();
+await page.waitForSelector("text=P1の ターン！");
+check("RESET: SELECT_P1 に戻る", (await page.locator(".battle-handover").count()) === 0);
+check("RESET: コマンド3ボタン", (await page.locator(".battle-command").count()) === 3);
+check("RESET: ハイライト解除", (await page.locator(".battle-card-selected").count()) === 0);
+check("RESET: P1ラベル復帰", (await page.locator(".battle-command-player").textContent()) === "P1");
+
 // もどる
 await page.getByText("もどる").click();
 await page.waitForSelector("text=バトル スタート");

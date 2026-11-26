@@ -17,18 +17,58 @@ function currentHp(p) {
   return p.hp ?? p.maxHp;
 }
 
-// バトル画面（Step 2-1：見た目のUIレイアウトのみ）
+// ブラインド選択のターンフェーズ（Step 2-2）
+const PHASE_SELECT_P1 = "SELECT_P1";
+const PHASE_HANDOVER_TO_P2 = "HANDOVER_TO_P2";
+const PHASE_SELECT_P2 = "SELECT_P2";
+const PHASE_CONFIRM_SELECTION = "CONFIRM_SELECTION";
+
+// バトル画面（Step 2-1：見た目のUIレイアウト + Step 2-2：P1選択→目隠し→P2選択→確認の画面遷移）
 // P1 / P2 の先発3体が上下で向かい合う、ポケモン金銀風の画面。
 export default function BattleScreen({ p1Team, p2Team, onBack }) {
   const p1 = normalizeTeam(p1Team);
   const p2 = normalizeTeam(p2Team);
-  const [selected, setSelected] = useState(null);
+  const [turnPhase, setTurnPhase] = useState(PHASE_SELECT_P1);
+  const [p1SelectedIndex, setP1SelectedIndex] = useState(null);
+  const [p2SelectedIndex, setP2SelectedIndex] = useState(null);
 
-  const pick = (i) => {
-    // バトル進行はしない（見た目だけ）。押したボタンを強調し、ログに出す。
-    setSelected(selected === i ? null : i);
-    console.log("selected pokemon:", p1[i]?.name);
+  // P1が選んだ：インデックス保存 → 即座に目隠し画面へ
+  const selectP1 = (i) => {
+    setP1SelectedIndex(i);
+    setTurnPhase(PHASE_HANDOVER_TO_P2);
   };
+
+  // P2が選んだ：インデックス保存 → 選択結果確認へ
+  const selectP2 = (i) => {
+    setP2SelectedIndex(i);
+    setTurnPhase(PHASE_CONFIRM_SELECTION);
+  };
+
+  // リセット：両選択を null に戻し、P1選択から再開
+  const resetSelection = () => {
+    setP1SelectedIndex(null);
+    setP2SelectedIndex(null);
+    setTurnPhase(PHASE_SELECT_P1);
+  };
+
+  const p1Selected = p1SelectedIndex !== null ? p1[p1SelectedIndex] : null;
+  const p2Selected = p2SelectedIndex !== null ? p2[p2SelectedIndex] : null;
+
+  // メッセージウィンドウのテキスト（フェーズごとに切替）
+  let message;
+  if (turnPhase === PHASE_SELECT_P1) {
+    message = "P1の ターン！ こうげきする ポケモンを えらんでね！";
+  } else if (turnPhase === PHASE_SELECT_P2) {
+    message = "P2の ターン！ こうげきする ポケモンを えらんでね！";
+  } else if (turnPhase === PHASE_CONFIRM_SELECTION) {
+    message = `P1は ${p1Selected?.name}！ P2は ${p2Selected?.name}を えらんだ！`;
+  } else {
+    message = "";
+  }
+
+  // コマンドパネルで表示するチーム（P1ターンなら p1、P2ターンなら p2）
+  const activeTeam = turnPhase === PHASE_SELECT_P1 ? p1 : p2;
+  const isP1Turn = turnPhase === PHASE_SELECT_P1;
 
   return (
     <div className="battle-screen">
@@ -48,7 +88,14 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
         {/* 上段：相手（P2） */}
         <div className="battle-row battle-row-p2">
           {p2.map((p, i) => (
-            <div key={`${p.id}-${i}`} className="battle-card">
+            <div
+              key={`${p.id}-${i}`}
+              className={`battle-card ${
+                turnPhase === PHASE_CONFIRM_SELECTION && i === p2SelectedIndex
+                  ? "battle-card-selected battle-card-selected-p2"
+                  : ""
+              }`}
+            >
               <div className="battle-status">
                 <span className="battle-name">{p.name}</span>
                 <div className="hp-bar">
@@ -73,7 +120,14 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
         {/* 下段：自分（P1） */}
         <div className="battle-row battle-row-p1">
           {p1.map((p, i) => (
-            <div key={`${p.id}-${i}`} className="battle-card">
+            <div
+              key={`${p.id}-${i}`}
+              className={`battle-card ${
+                turnPhase === PHASE_CONFIRM_SELECTION && i === p1SelectedIndex
+                  ? "battle-card-selected battle-card-selected-p1"
+                  : ""
+              }`}
+            >
               <img
                 className="pixel-img battle-sprite battle-sprite-back"
                 src={p.sprites.back}
@@ -98,29 +152,77 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
 
       {/* ③ メッセージウィンドウ */}
       <div className="battle-message">
-        <p>P1の ターン！ こうげきする ポケモンを えらんでね！</p>
+        <p>{message}</p>
       </div>
 
-      {/* ④ コマンド・選択パネル */}
-      <section className="battle-commands">
-        {p1.map((p, i) => (
-          <button
-            key={`${p.id}-${i}`}
-            className={`battle-command ${selected === i ? "battle-command-active" : ""}`}
-            onClick={() => pick(i)}
-            aria-label={`${p.name} を選択`}
-          >
-            <span className="battle-command-name">{p.name}</span>
-            <span className="battle-command-move">{p.moveName}</span>
-            <span
-              className="battle-command-speed"
-              aria-label={`すばやさ${p.spd}段階`}
+      {/* ④ コマンド・選択パネル（目隠し画面中は非表示） */}
+      {turnPhase !== PHASE_HANDOVER_TO_P2 && (
+        <section
+          className={`battle-commands ${
+            isP1Turn
+              ? "battle-commands-p1"
+              : turnPhase === PHASE_SELECT_P2
+              ? "battle-commands-p2"
+              : ""
+          }`}
+        >
+          {isP1Turn || turnPhase === PHASE_SELECT_P2 ? (
+            <>
+              <div className="battle-command-label">
+                <span
+                  className={`battle-command-player ${
+                    isP1Turn
+                      ? "battle-command-player-p1"
+                      : "battle-command-player-p2"
+                  }`}
+                >
+                  {isP1Turn ? "P1" : "P2"}
+                </span>
+                <span className="battle-command-label-text">の えらび</span>
+              </div>
+              <div className="battle-command-grid">
+                {activeTeam.map((p, i) => (
+                  <button
+                    key={`${p.id}-${i}`}
+                    className="battle-command"
+                    onClick={() => (isP1Turn ? selectP1(i) : selectP2(i))}
+                    aria-label={`${p.name} を選択`}
+                  >
+                    <span className="battle-command-name">{p.name}</span>
+                    <span className="battle-command-move">{p.moveName}</span>
+                    <span
+                      className="battle-command-speed"
+                      aria-label={`すばやさ${p.spd}段階`}
+                    >
+                      {"▲".repeat(p.spd)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <button className="battle-reset" onClick={resetSelection}>
+              もういちど えらぶ（リセット）
+            </button>
+          )}
+        </section>
+      )}
+
+      {/* ⑤ 目隠し（手渡し）オーバーレイ：P1の選択を隠してP2へ */}
+      {turnPhase === PHASE_HANDOVER_TO_P2 && (
+        <div className="battle-handover">
+          <div className="battle-handover-window">
+            <div className="battle-handover-title">P2に スマホを わたしてね！</div>
+            <p className="battle-handover-sub">P1の せんたくは かくされているよ</p>
+            <button
+              className="battle-handover-btn"
+              onClick={() => setTurnPhase(PHASE_SELECT_P2)}
             >
-              {"▲".repeat(p.spd)}
-            </span>
-          </button>
-        ))}
-      </section>
+              P2 じゅんび OK！
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
