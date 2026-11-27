@@ -90,6 +90,8 @@ const PHASE_SPEED_RESULT = "SPEED_RESULT";
 const PHASE_EXEC_FIRST = "EXEC_FIRST";
 const PHASE_EXEC_SECOND = "EXEC_SECOND";
 const PHASE_REPLACE_P1 = "REPLACE_P1"; // P1の控え選択中（Step 2-4a-2）
+const PHASE_HANDOVER_REPLACE_P2 = "HANDOVER_REPLACE_P2"; // P2交代前のスマホ受け渡し（目隠し）画面（Step 2-4a-3）
+const PHASE_REPLACE_P2 = "REPLACE_P2"; // P2の控え選択中（Step 2-4a-3）
 const PHASE_TEST_END = "TEST_END";
 
 // すばやさ比較による先攻・後攻の決定（純粋関数：Step 2-3a）
@@ -128,6 +130,8 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
   const [p2Field, setP2Field] = useState(() => makeField(p2));
   // P1の控え（p1Teamの後半3体：Step 2-4a-2）。propsが未定義でもクラッシュしないよう安全に取得
   const [p1Bench, setP1Bench] = useState(() => (p1Team || []).slice(3, 6));
+  // P2の控え（p2Teamの後半3体：Step 2-4a-3）
+  const [p2Bench, setP2Bench] = useState(() => (p2Team || []).slice(3, 6));
   const [turnPhase, setTurnPhase] = useState(PHASE_SELECT_P1);
   const [p1SelectedIndex, setP1SelectedIndex] = useState(null);
   const [p2SelectedIndex, setP2SelectedIndex] = useState(null);
@@ -236,13 +240,31 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
     if (p1F.some((p) => p.isFainted) && p1Bench.length > 0) {
       setTurnPhase(PHASE_REPLACE_P1);
       setMessage("P1の ポケモンが たおれた！ つぎに だす ポケモンを えらんでね！");
-    } else if (p1F.every((p) => p.isFainted) || p2F.every((p) => p.isFainted)) {
-      // どちらかの先発3体が全員戦闘不能ならテスト終了
+    } else {
+      // P1交代が不要だったとき：P2交代チェックへ（Step 2-4a-3 ティング①）
+      // 攻撃計算直後の最新配列（p1F/p2F）を渡して stale state を避ける
+      proceedAfterP1Replace(p1F, p2F, p2Bench);
+    }
+  };
+
+  // P2交代チェックのヘルパー（Step 2-4a-3）：
+  // P1交代完了後にP2の控え交代が必要か、そうでなければ次のターンへ進む。
+  // ReactのState更新遅延によるバグを防ぐため、最新フィールド/控え配列を引数で渡す。
+  const proceedAfterP1Replace = (latestP1Field, latestP2Field, latestP2Bench) => {
+    // P2に戦闘不能ポケモンがおり、控えが残っていれば目隠し画面から（モーダルは後で）
+    if (latestP2Field.some((p) => p.isFainted) && latestP2Bench.length > 0) {
+      setTurnPhase(PHASE_HANDOVER_REPLACE_P2);
+      setMessage("P2の ポケモンが たおれた！ つぎに だす ポケモンを えらんでね！");
+      return;
+    }
+    // どちらかの先発3体が全員戦闘不能ならテスト終了
+    if (latestP1Field.every((p) => p.isFainted) || latestP2Field.every((p) => p.isFainted)) {
       setTurnPhase(PHASE_TEST_END);
       setMessage("せんぱつ 3たいが ぜんめつした！ リセットしてね");
-    } else {
-      setTurnPhase(PHASE_SELECT_P1);
+      return;
     }
+    // それ以外：選択状態は既にリセット済み、次のターンへ
+    setTurnPhase(PHASE_SELECT_P1);
   };
 
   // P1控えの選択（Step 2-4a-2）：倒れた枠に控えを打ち替え、控えリストから削除
@@ -276,11 +298,50 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
       // 交代が完了していない：次の交代モーダルを表示し続ける
       setTurnPhase(PHASE_REPLACE_P1);
     } else {
-      // P1の交代がすべて完了：選択状態をリセットして次のターンへ
+      // P1の交代がすべて完了：選択状態をリセットし、P2交代チェックへ（Step 2-4a-3 ティング②）
       setP1SelectedIndex(null);
       setP2SelectedIndex(null);
       setTurnOrder(null);
-      setTurnPhase(PHASE_SELECT_P1);
+      proceedAfterP1Replace(nextP1Field, p2Field, p2Bench);
+    }
+  };
+
+  // P2控えの選択（Step 2-4a-3）：倒れた枠に控えを打ち替え、控えリストから削除
+  const handleSelectP2Bench = (benchIndex) => {
+    // 1. 交代先スロットの特定：最初の戦闘不能枠をを探す
+    const faintedIndex = p2Field.findIndex((p) => p.isFainted);
+    if (faintedIndex === -1) return;
+
+    // 2. フィールドの入れ替え：控えから元気なバトル用ポケモンを生成
+    const benchPokemon = p2Bench[benchIndex];
+    const freshPokemon = {
+      ...benchPokemon,
+      currentHp: benchPokemon.maxHp,
+      isFainted: false,
+      fatigueTurns: 0,
+    };
+    const nextP2Field = p2Field.map((p, i) =>
+      i === faintedIndex ? freshPokemon : p
+    );
+
+    // 3. 控えリストからの削除
+    const nextP2Bench = p2Bench.filter((_, i) => i !== benchIndex);
+
+    // 4. State更新とメッセージ表示
+    setP2Field(nextP2Field);
+    setP2Bench(nextP2Bench);
+    setMessage(`P2 は ${benchPokemon.name} を くりだした！`);
+
+    // 5. 複数体同時ダウンの継続判定
+    if (nextP2Field.some((p) => p.isFainted) && nextP2Bench.length > 0) {
+      // 交代が完了していない：次の交代モーダルを表示し続ける（目隠し画面は挟まない）
+      setTurnPhase(PHASE_REPLACE_P2);
+    } else {
+      // P2の交代がすべて完了：選択状態をリセットし、テスト終了/次のターンへ
+      setP1SelectedIndex(null);
+      setP2SelectedIndex(null);
+      setTurnOrder(null);
+      proceedAfterP1Replace(p1Field, nextP2Field, nextP2Bench);
     }
   };
 
@@ -297,6 +358,7 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
     setP1Field(makeField(p1));
     setP2Field(makeField(p2));
     setP1Bench((p1Team || []).slice(3, 6));
+    setP2Bench((p2Team || []).slice(3, 6));
     setP1SelectedIndex(null);
     setP2SelectedIndex(null);
     setTurnOrder(null);
@@ -312,6 +374,8 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
     turnPhase === PHASE_EXEC_FIRST ||
     turnPhase === PHASE_EXEC_SECOND ||
     turnPhase === PHASE_REPLACE_P1 ||
+    turnPhase === PHASE_HANDOVER_REPLACE_P2 ||
+    turnPhase === PHASE_REPLACE_P2 ||
     turnPhase === PHASE_TEST_END
   ) {
     displayMessage = message;
@@ -344,6 +408,9 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
           <span className="battle-score">P1 0 - 0 P2</span>
           <span className="battle-bench-count" title="P1の控え残数">
             P1ひかえ: {p1Bench.length}
+          </span>
+          <span className="battle-bench-count" title="P2の控え残数">
+            P2ひかえ: {p2Bench.length}
           </span>
           <button className="battle-reset-hp" onClick={resetAll} title="テスト用：全HP回復して最初からやり直す">
             HPリセット
@@ -491,7 +558,7 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
       </div>
 
       {/* ④ コマンド・選択パネル（目隠し画面中は非表示） */}
-      {turnPhase !== PHASE_HANDOVER_TO_P2 && (
+      {turnPhase !== PHASE_HANDOVER_TO_P2 && turnPhase !== PHASE_HANDOVER_REPLACE_P2 && (
         <section
           className={`battle-commands ${
             isP1Turn
@@ -573,12 +640,43 @@ export default function BattleScreen({ p1Team, p2Team, onBack }) {
         </div>
       )}
 
+      {/* ⑤' 目隠し（手渡し）オーバーレイ：P2の控え交代前にスマホを渡す（Step 2-4a-3） */}
+      {turnPhase === PHASE_HANDOVER_REPLACE_P2 && (
+        <div className="battle-handover">
+          <div className="battle-handover-window">
+            <div className="battle-handover-title">P2に スマホを わたしてね！</div>
+            <p className="battle-handover-sub">
+              P2の ポケモンが たおれたよ！ ひかえから えらんでね
+            </p>
+            <button
+              className="battle-handover-btn"
+              onClick={() => {
+                setTurnPhase(PHASE_REPLACE_P2);
+                setMessage(
+                  "P2の ポケモンが たおれた！ つぎに だす ポケモンを えらんでね！"
+                );
+              }}
+            >
+              P2 こうたい じゅんび OK！
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ⑥ P1控え選択モーダル（Step 2-4a-2） */}
       <BenchSelectModal
         isOpen={turnPhase === PHASE_REPLACE_P1}
         playerLabel="P1"
         benchPokemons={p1Bench}
         onSelect={handleSelectP1Bench}
+      />
+
+      {/* ⑦ P2控え選択モーダル（Step 2-4a-3） */}
+      <BenchSelectModal
+        isOpen={turnPhase === PHASE_REPLACE_P2}
+        playerLabel="P2"
+        benchPokemons={p2Bench}
+        onSelect={handleSelectP2Bench}
       />
     </div>
   );
